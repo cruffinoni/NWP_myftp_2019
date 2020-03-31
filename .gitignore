@@ -102,10 +102,6 @@ CMakeLists.txt
 a.out
 .vscode
 
-tests/main.c
-tmp_file
-test_strace
-strace
-simple
-a
-b
+bootstrap/
+myftp
+client
