@@ -7,7 +7,10 @@
 MAIN_FILE		=	./src/main.c
 SRC				=	./src/error.c			\
 					./src/connection.c		\
-					./src/authentication.c	\
+					./src/cmd_parse.c	\
+					./src/cmds/authentication.c	\
+					./src/cmds/utils/tab_len.c	\
+					./src/cmds/utils/str_to_array.c	\
 
 CLIENT		=	./bootstrap/client.c		\
 

@@ -25,10 +25,14 @@ typedef struct server_s {
     int socket;
     fd_set active_fd;
     fd_set read_fd;
+
+    fd_set pending_fd;
     fd_set identified_fd;
 } server_t;
 
 uint ACTIVE_SERVER;
 error_t pending_connections(server_t *this);
+error_t parse_command(server_t *this, const int client,
+    const char *input);
 
 #endif

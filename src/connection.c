@@ -38,8 +38,7 @@ static error_t handle_client_input(server_t *this, const int client_socket)
         FD_CLR(client_socket, &this->active_fd);
     }
     else {
-        fprintf(stderr, "[Server] Message from client id %i: '%s' (size: %li)\n",
-                client_socket, buffer, rtn);
+        parse_command(this, client_socket, buffer);
         fflush(stderr);
     }
     return (ERR_NONE);
@@ -53,13 +52,13 @@ static error_t accept_client(server_t *this)
 
     if (client_socket == -1)
         return (display_perror("accept"));
-    fprintf (stderr, "[Server] Incoming connection from '%s':'%hd'.\n",
+    fprintf (stderr, "[Server - %i] Incoming connection from '%s':'%hd'.\n", client_socket,
         inet_ntoa(client_data.sin_addr), ntohs(client_data.sin_port));
     FD_SET(client_socket, &this->active_fd);
     return (ERR_NONE);
 }
 
-static error_t check_connection(server_t *this)
+static error_t handle_connection(server_t *this)
 {
     for (int i = 0; i < MAX_CONNECTION; ++i) {
         if (!FD_ISSET(i, &this->read_fd))
@@ -83,11 +82,12 @@ error_t pending_connections(server_t *this)
     fprintf(stderr, "[Server] Ready to accept connections...\n");
     while (ACTIVE_SERVER) {
         this->read_fd = this->active_fd;
-        err = select(MAX_CONNECTION, &this->read_fd, NULL, NULL, NULL)
+        //  TODO: Gérer le fait que CTRL+C oblige select à retourner -1
+        int s = select(MAX_CONNECTION, &this->read_fd, NULL, NULL, NULL);
         //if (err < 0 && )
-        if (err < 0)
+        if (s < 0)
             return (display_perror("select"));
-        err = check_connection(this);
+        err = handle_connection(this);
         if (err != ERR_NONE)
             return (err);
     }
