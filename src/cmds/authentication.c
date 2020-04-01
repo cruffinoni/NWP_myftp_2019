@@ -6,6 +6,7 @@
 */
 
 #include <stdio.h>
+#include <unistd.h>
 #include "ftp.h"
 #include "commands.h"
 
@@ -29,4 +30,15 @@ reply_code_t use_password(server_t *server, const int client, char **input)
     FD_CLR(client, &server->pending_fd);
     FD_SET(client, &server->identified_fd);
     return (USER_LOGGED_IN);
+}
+
+reply_code_t client_quit(server_t *server, const int client, char **input)
+{
+    (void) input;
+    FD_CLR(client, &server->pending_fd);
+    FD_CLR(client, &server->read_fd);
+    FD_CLR(client, &server->active_fd);
+    FD_CLR(client, &server->identified_fd);
+    close(client);
+    return (SERVICE_CLOSING_CC);
 }

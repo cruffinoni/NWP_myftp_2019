@@ -17,7 +17,9 @@ static const char *ERROR_DEFINITION[] = {
     "\t- [path] is the path to the home directory for the Anonymous user",
     "Unknown argument detected, rerun with -h or --help flag",
     "The port entered is not a number",
-    "Woops! An error occurred..."
+    "Woops! An error occurred...",
+    "Internal error: invalid FTP reply code",
+    "Authorizations denied for access to the provided home directory"
 };
 
 error_t display_perror(const char *source)

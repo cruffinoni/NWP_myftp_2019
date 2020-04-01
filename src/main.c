@@ -6,35 +6,21 @@
 */
 
 #include <stdlib.h>
+#include <signal.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdio.h>
 #include "ftp.h"
 
-error_t create_socket(int *socket_id, const int port)
+void sig_handler_int(int signal_id)
 {
-    sockaddrin_t socket_bind;
-    int rtn;
-
-    *socket_id = socket(AF_INET, SOCK_STREAM , 0);
-    if (*socket_id == -1)
-        return (display_perror("socket"));
-    socket_bind.sin_family = AF_INET;
-    socket_bind.sin_addr.s_addr = INADDR_ANY;
-    socket_bind.sin_port = htons(port);
-    rtn = bind(*socket_id, (sockaddr_t *) &socket_bind, sizeof(sockaddrin_t));
-    if (rtn == -1)
-        return (display_perror("bind"));
-    rtn = listen(*socket_id, MAX_CONNECTION);
-    if (rtn == -1)
-        return (display_perror("listen"));
-    return (ERR_NONE);
+    if (signal_id == SIGINT) {
+        printf("Sigint detected\n");
+        ACTIVE_SERVER = false;
+    }
 }
 
-static error_t create_server(const int ac, const char **av, server_t *server)
+static error_t check_arguments(const int ac, const char **av)
 {
-    char *buffer = NULL;
-
     if (ac < 2 || ac > 3)
         return (ERR_INVALID_NB_ARGS);
     if (ac == 2) {
@@ -43,28 +29,7 @@ static error_t create_server(const int ac, const char **av, server_t *server)
         else
             return (ERR_INVALID_ARG);
     }
-    server->path = strdup(av[2]);
-    if (server->path == NULL)
-        return (ERR_MALLOC);
-    server->port = (int) strtol(av[1], &buffer, 10);
-    if (strlen(buffer))
-        return (ERR_INVALID_PORT);
-    FD_ZERO(&server->active_fd);
-    FD_ZERO(&server->read_fd);
-    FD_ZERO(&server->pending_fd);
-    FD_ZERO(&server->identified_fd);
-    return (create_socket(&server->socket, server->port));
-}
-
-static void free_server(server_t *server)
-{
-    for (int i = 0; i < MAX_CONNECTION; ++i)
-        if (FD_ISSET(i, &server->read_fd) && i != server->socket)
-            close(i);
-    if (server->path != NULL)
-        free(server->path);
-    close(server->socket);
-    free(server);
+    return (ERR_NONE);
 }
 
 int main(const int ac, const char **av)
@@ -74,11 +39,18 @@ int main(const int ac, const char **av)
 
     if (server == NULL)
         return (ERR_EXIT);
-    if ((err = create_server(ac, av, server)) != ERR_NONE) {
+    if ((err = check_arguments(ac, av)) != ERR_NONE) {
         free_server(server);
         return (display_error_message(err));
     }
-    fprintf(stderr, "[Server] Path: '%s' at port %i w/ socket: %i\n", server->path, server->port, server->socket);
+    if ((err = create_server(av, server)) != ERR_NONE) {
+        free_server(server);
+        return (display_error_message(err));
+    }
+    fprintf(stderr, "[Server] Path: '%s' at port %i w/ socket: %i\n", server->home, server->port, server->socket);
+
+    if (signal(SIGINT, &sig_handler_int) == SIG_ERR)
+        return (display_perror("signal"));
     pending_connections(server);
     free_server(server);
     return (ERR_NONE);

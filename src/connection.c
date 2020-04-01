@@ -6,7 +6,6 @@
 */
 
 #include <stdio.h>
-#include <signal.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -14,18 +13,28 @@
 #include "ftp.h"
 #include "commands.h"
 
-void sig_handler_int(int signal_id)
+static error_t process_client_input(server_t *this, const int client,
+    char *buffer, const int returned_val)
 {
-    if (signal_id == SIGINT) {
-        printf("Sigint detected\n");
-        ACTIVE_SERVER = false;
-    }
+    char **args;
+    error_t err = ERR_NONE;
+
+    if (returned_val == MAX_MESSAGE_LENGTH)
+        return (send_reply(client, LINE_TOO_LONG));
+    args = str_to_array(buffer);
+    if (args == NULL)
+        return (ERR_MALLOC);
+    if (args[0] != NULL)
+        err = parse_command(this, client, args);
+    free_tab(args);
+    return (err);
 }
 
 static error_t handle_client_input(server_t *this, const int client_socket)
 {
     char *buffer = malloc(sizeof(char) * MAX_MESSAGE_LENGTH);
     ssize_t rtn;
+    error_t err = ERR_NONE;
 
     if (buffer == NULL)
         return (ERR_MALLOC);
@@ -34,16 +43,12 @@ static error_t handle_client_input(server_t *this, const int client_socket)
     if (rtn == -1) {
         free(buffer);
         return (display_perror("read"));
-    } else if (rtn == 0) {
-        fprintf(stderr, "[Server] Closing remote connection with client id %i\n", client_socket);
+    } else if (rtn == 0)
         FD_CLR(client_socket, &this->active_fd);
-    }
-    else {
-        parse_command(this, client_socket, buffer);
-        fflush(stderr);
-    }
+    else
+        err = process_client_input(this, client_socket, buffer, rtn);
     free(buffer);
-    return (ERR_NONE);
+    return (err);
 }
 
 static error_t accept_client(server_t *this)
@@ -54,9 +59,11 @@ static error_t accept_client(server_t *this)
 
     if (client_socket == -1)
         return (display_perror("accept"));
-    fprintf (stderr, "[Server - %i] Incoming connection from '%s':'%hd'.\n", client_socket,
+    fprintf (stderr, "[Server - %i]"
+         "Incoming connection from '%s':'%hd'.\n", client_socket,
         inet_ntoa(client_data.sin_addr), ntohs(client_data.sin_port));
     FD_SET(client_socket, &this->active_fd);
+    strcpy(this->client[client_socket].path, this->home);
     return (send_reply(client_socket, SERVICE_READY));
 }
 
@@ -77,17 +84,12 @@ error_t pending_connections(server_t *this)
 {
     error_t err;
 
-    if (signal(SIGINT, &sig_handler_int) == SIG_ERR)
-        return (display_perror("signal"));
     FD_SET(this->socket, &this->active_fd);
     ACTIVE_SERVER = true;
     fprintf(stderr, "[Server] Ready to accept connections...\n");
     while (ACTIVE_SERVER) {
         this->read_fd = this->active_fd;
-        //  TODO: Gérer le fait que CTRL+C oblige select à retourner -1
-        int s = select(MAX_CONNECTION, &this->read_fd, NULL, NULL, NULL);
-        //if (err < 0 && )
-        if (s < 0)
+        if (select(MAX_CONNECTION, &this->read_fd, NULL, NULL, NULL) < 0)
             return (display_perror("select"));
         err = handle_connection(this);
         if (err != ERR_NONE)

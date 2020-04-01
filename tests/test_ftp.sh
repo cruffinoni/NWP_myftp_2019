@@ -106,6 +106,7 @@ test00()
 {
   local test_name="Authentication"
 
+  echo "$test_name : In progress..."
   local cmd1="USER $USERNAME"
   local cmd2="PASS $PASS"
 
@@ -119,20 +120,26 @@ test00()
   launch_test "$test_name" "$cmd1" 331
   launch_test "$test_name" "$cmd2" 230
 
-  print_succeeded "$test_name"
-  return
-}
+  echo "$test_name : Finished"
 
-test01()
-{
-  local test_name="Change directory"
+  test_name="Change directory"
+  echo "$test_name : In progress..."
+  launch_test "$test_name" "CWD /home/dayrion/delivery/NWP_myftp_2019" 250
+  launch_test "$test_name" "CDUP" 200
+  echo "$test_name : Finished"
 
-  launch_test "$test_name" "CWD ~/delivery" 250
-  print_succeeded "$test_name"
+  test_name="Show current directory"
+  echo "$test_name : In progress..."
+  launch_test "$test_name" "PWD" 257
+  echo "$test_name : Finished"
+
+  test_name="Gracefully quit"
+  echo "$test_name : In progress..."
+  launch_test "$test_name" "QUIT" 221
+  echo "$test_name : Finished"
   return
 }
 
 test00
-test01
 kill_client
 clean
