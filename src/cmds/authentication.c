@@ -5,7 +5,6 @@
 ** TODO: CHANGE DESCRIPTION.
 */
 
-#include <string.h>
 #include <stdio.h>
 #include "ftp.h"
 #include "commands.h"

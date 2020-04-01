@@ -18,6 +18,7 @@ enum error_e {
     ERR_INVALID_ARG,
     ERR_INVALID_PORT,
     ERR_INTERNAL,
+    ERR_INVALID_REPLY_CODE,
 
     ERR_MAX_ERR,
     ERR_EXIT = 84,

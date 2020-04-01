@@ -12,6 +12,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include "ftp.h"
+#include "commands.h"
 
 void sig_handler_int(int signal_id)
 {
@@ -41,6 +42,7 @@ static error_t handle_client_input(server_t *this, const int client_socket)
         parse_command(this, client_socket, buffer);
         fflush(stderr);
     }
+    free(buffer);
     return (ERR_NONE);
 }
 
@@ -55,7 +57,7 @@ static error_t accept_client(server_t *this)
     fprintf (stderr, "[Server - %i] Incoming connection from '%s':'%hd'.\n", client_socket,
         inet_ntoa(client_data.sin_addr), ntohs(client_data.sin_port));
     FD_SET(client_socket, &this->active_fd);
-    return (ERR_NONE);
+    return (send_reply(client_socket, SERVICE_READY));
 }
 
 static error_t handle_connection(server_t *this)

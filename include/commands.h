@@ -14,7 +14,7 @@
 char **str_to_array(char const *str);
 size_t get_tab_len(char const **arg);
 
-#define BASE_MESSAGE "%i : %s\n"
+#define BASE_MESSAGE "XXX : \n"
 
 typedef enum reply_codes_e {
     SERVICE_READY_DELAYED           = 120,
@@ -41,10 +41,12 @@ typedef struct reply_code_data_s {
 
 // ----
 
+typedef reply_code_t (* ftp_command)(server_t *, const int, char **);
+
 typedef struct command_s {
     const char *name;
     const char *args;
-    reply_code_t (*func)(server_t *, const int, char **);
+    ftp_command func;
 } command_t;
 
 reply_code_t authenticate_client(server_t *server, const int client,
@@ -57,5 +59,7 @@ static const command_t VALID_COMMANDS[] = {
     {"PASS", "", &use_password},
     {"NULL", "", NULL},
 };
+
+error_t send_reply(const int client, const reply_code_t code);
 
 #endif

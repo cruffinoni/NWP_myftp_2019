@@ -51,12 +51,13 @@ static error_t create_server(const int ac, const char **av, server_t *server)
         return (ERR_INVALID_PORT);
     FD_ZERO(&server->active_fd);
     FD_ZERO(&server->read_fd);
+    FD_ZERO(&server->pending_fd);
+    FD_ZERO(&server->identified_fd);
     return (create_socket(&server->socket, server->port));
 }
 
 static void free_server(server_t *server)
 {
-    // Close connections that are still alive
     for (int i = 0; i < MAX_CONNECTION; ++i)
         if (FD_ISSET(i, &server->read_fd) && i != server->socket)
             close(i);

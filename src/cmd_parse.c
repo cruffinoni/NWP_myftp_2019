@@ -45,20 +45,26 @@ static const reply_code_data_t REPLY_DATA[] = {
     {INVALID_CODE, "NONE"}
 };
 
-static char *format_rtn_message(const reply_code_t code)
+static error_t format_rtn_message(const reply_code_t code, char **message)
 {
-    char *formatted_msg = NULL;
     int idx = -1;
 
     for (int i = 0; REPLY_DATA[i].code != INVALID_CODE && idx == -1; ++i)
         if (REPLY_DATA[i].code == code)
             idx = i;
-    formatted_msg = malloc(sizeof(char) * (strlen(BASE_MESSAGE)));
-    if (formatted_msg == NULL)
-        return (NULL);
-    sprintf(formatted_msg, "%i : %s\n", REPLY_DATA[idx].code,
+    if (idx == -1)
+        return (ERR_INVALID_REPLY_CODE);
+    if (*message == NULL) {
+        *message = malloc(sizeof(char) * (strlen(BASE_MESSAGE) +
+            strlen(REPLY_DATA[idx].name) + 1));
+        if (*message == NULL) {
+            perror("malloc");
+            return (ERR_INTERNAL);
+        }
+    }
+    sprintf(*message, "%i : %s\n", REPLY_DATA[idx].code,
         REPLY_DATA[idx].name);
-    return (formatted_msg);
+    return (ERR_NONE);
 }
 
 static void free_tab(char **tab)
@@ -68,15 +74,32 @@ static void free_tab(char **tab)
     free(tab);
 }
 
+error_t send_reply(const int client, const reply_code_t code)
+{
+    char *reply = NULL;
+    error_t err = format_rtn_message(code, &reply);
+
+    if (err != ERR_NONE)
+        return (err);
+    fprintf(stderr, "[Server - %i] Response: '%s'\n", client, reply);
+    write(client, reply, strlen(reply));
+    free(reply);
+    return (ERR_NONE);
+}
+
 error_t parse_command(server_t *this, const int client, const char *input)
 {
     fprintf(stderr, "[Server - %i] Message: '%s'\n",
         client, input);
     char **args = str_to_array(input);
-    char *reply;
+    //error_t err;
 
     if (args == NULL)
         return (ERR_MALLOC);
+    if (args[0] == NULL) {
+        free_tab(args);
+        return (ERR_NONE);
+    }
     for (int i = 0; VALID_COMMANDS[i].func != NULL; ++i) {
         if (strcmp(args[0], VALID_COMMANDS[i].name) != 0)
             continue;
@@ -86,13 +109,14 @@ error_t parse_command(server_t *this, const int client, const char *input)
                 client, strlen(VALID_COMMANDS[i].args), get_tab_len((const char **) args) - 1);
             return (ERR_NONE);
         }
-
         fprintf(stderr, "[Server - %i] Valid command: '%s'\n", client, args[0]);
-        reply = format_rtn_message(VALID_COMMANDS[i].func((server_t *) this, client, args));
-        if (reply == NULL)
-            return (ERR_MALLOC);
-        fprintf(stderr, "[Server - %i] Response: '%s'\n", client, reply);
-        write(client, reply, strlen(reply));
+        //reply = format_rtn_message(VALID_COMMANDS[i].func((server_t *) this, client, args));
+        send_reply(client, VALID_COMMANDS[i].func((server_t *) this,
+            client, args));
+        //if (reply == NULL)
+        //    return (ERR_MALLOC);
+        //fprintf(stderr, "[Server - %i] Response: '%s'\n", client, reply);
+        //write(client, reply, strlen(reply));
     }
     free_tab(args);
     return (ERR_NONE);
